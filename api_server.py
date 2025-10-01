@@ -6,18 +6,13 @@ from datetime import datetime
 from ml_scheduler import ReinforcementLearningScheduler
 import traceback
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
-
-# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Global scheduler instance
 scheduler = None
 
 def get_scheduler():
-    """Get or create scheduler instance with error handling"""
     global scheduler
     try:
         if scheduler is None:
@@ -26,32 +21,21 @@ def get_scheduler():
         return scheduler
     except Exception as e:
         logging.error(f"Failed to initialize scheduler: {e}")
-        traceback.print_exc()
         raise Exception(f"Scheduler initialization failed: {str(e)}")
 
 @app.route('/api/generate-schedules', methods=['POST'])
 def generate_schedules():
-    """API endpoint to generate weekly schedules using ML/RL"""
     try:
-        logging.info("Starting schedule generation...")
+        logging.info("Starting DEMO schedule generation...")
         scheduler = get_scheduler()
 
-        # Read semester from request
         data = request.get_json(silent=True) or {}
-        semester = data.get('semester')  # '1st Sem' or '2nd Sem'
+        semester = data.get('semester', '2nd Sem')
 
-        # Load data (with optional semester filter)
         scheduler.load_data(semester=semester)
-
-        # Generate weekly schedules
-        logging.info("Generating schedules...")
         schedule_data = scheduler.generate_schedule(semester=semester)
-
-        # Format for display
-        logging.info("Formatting schedules for display...")
         formatted_data = scheduler.format_weekly_schedule_display(schedule_data)
 
-        # Create result with proper structure
         result = {
             'success': True,
             'generated_at': datetime.now().isoformat(),
@@ -62,28 +46,19 @@ def generate_schedules():
                     'total_sections': len(scheduler.sections),
                     'total_courses': len(scheduler.courses),
                     'total_faculty': len(scheduler.faculty),
-                    'schedules_saved_to_database': 0,
-                    'weekdays_covered': scheduler.weekdays,
-                    'conflict_free': True,
-                    'all_days_filled': True,
-                    'ml_algorithm': 'Reinforcement Learning (Q-Learning)',
-                    'conflict_count': scheduler.conflict_count,
-                    'successful_assignments': scheduler.successful_assignments,
-                    'semester': semester or 'All',
-                    'lunch_break': {
-                        'start': '12:00',
-                        'end': '12:30'
-                    }
+                    'schedules_generated': len(formatted_data['schedules']),
+                    'message': 'DEMO: Generated with minimal test data',
+                    'semester': semester,
+                    'status': 'TEST_SUCCESS'
                 }
             }
         }
 
-        logging.info("Schedule generation completed successfully")
+        logging.info("DEMO schedule generation completed successfully")
         return jsonify(result)
 
     except Exception as e:
         logging.error(f"Error generating schedules: {e}")
-        traceback.print_exc()
         error_result = {
             'success': False,
             'error': str(e),
@@ -93,25 +68,12 @@ def generate_schedules():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
-    try:
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.now().isoformat(),
-            'ml_backend': True
-        })
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'timestamp': datetime.now().isoformat(),
-            'ml_backend': True,
-            'error': str(e)
-        }), 500
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'ml_backend': True,
+        'mode': 'DEMO_TEST'
+    })
 
 if __name__ == "__main__":
-    try:
-        logging.info("Starting ML API server...")
-        app.run(host='0.0.0.0', port=5000, debug=False)
-    except Exception as e:
-        logging.error(f"Failed to start server: {e}")
-        traceback.print_exc()
+    app.run(host='0.0.0.0', port=5000, debug=False)
