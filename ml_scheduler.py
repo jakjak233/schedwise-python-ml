@@ -145,17 +145,13 @@ class ReinforcementLearningScheduler:
         gc.collect()
 
     def get_database_config(self):
-        """Get database configuration with fallback"""
-        try:
-            response = requests.get(DB_CONFIG_ENDPOINT, timeout=5)
-            if response.status_code == 200:
-                config = response.json()
-                return {
-                    'host': config.get('host', 'localhost'),
-                    'user': config.get('user', 'root'),
-                    'password': config.get('password', ''),
-                    'database': config.get('database', 'schedwise')
-                }
+    """Hardcoded database configuration"""
+    return {
+        'host': '23.111.150.178',
+        'user': 'uipbsit3_jimvoy',
+        'password': 'x3mpassword',
+        'database': 'uipbsit3_schedwise'
+    }
         except Exception as e:
             logging.warning(f"Could not fetch database config from PHP: {e}")
         
