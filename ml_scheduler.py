@@ -145,11 +145,11 @@ class ReinforcementLearningScheduler:
         gc.collect()
 
     def get_database_config(self):
-    """Hardcoded database configuration"""
+    """Hardcoded database configuration for testing"""
     return {
         'host': '23.111.150.178',
         'user': 'uipbsit3_jimvoy',
-        'password': 'x3mpassword',
+        'password': 'x3mpassword', 
         'database': 'uipbsit3_schedwise'
     }
         except Exception as e:
