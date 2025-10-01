@@ -51,13 +51,13 @@ def generate_schedules():
         logging.info("Formatting schedules for display...")
         formatted_data = scheduler.format_weekly_schedule_display(schedule_data)
 
-        # Create result with proper structure for PHP
+        # Create result with proper structure
         result = {
             'success': True,
             'generated_at': datetime.now().isoformat(),
             'data': {
                 'weekly_schedules': formatted_data['weekly_schedules'],
-                'schedules': formatted_data['schedules'],  # This is what the frontend expects
+                'schedules': formatted_data['schedules'],
                 'summary': {
                     'total_sections': len(scheduler.sections),
                     'total_courses': len(scheduler.courses),
@@ -111,7 +111,7 @@ def health_check():
 if __name__ == "__main__":
     try:
         logging.info("Starting ML API server...")
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        app.run(host='0.0.0.0', port=5000, debug=False)
     except Exception as e:
         logging.error(f"Failed to start server: {e}")
         traceback.print_exc()
