@@ -140,42 +140,40 @@ class ReinforcementLearningScheduler:
             raise Exception(f"Database connection failed: {str(e)}")
 
     def load_data(self, semester: Optional[str] = None):
-        """Load data with memory optimization"""
+        """Load minimal data for memory optimization"""
         try:
             if not self.connection:
                 self.connect_database()
 
             cursor = self.connection.cursor(dictionary=True)
 
-            # Load programs
-            cursor.execute("SELECT program_id, program_code, program_name FROM Programs")
-            programs_data = cursor.fetchall()
-            self.programs = [Program(**row) for row in programs_data]
+            # Load only MINIMAL data for testing
+            logging.info("Loading MINIMAL data for memory optimization...")
+            
+            # Load programs (limit 1)
+            cursor.execute("SELECT program_id, program_code, program_name FROM Programs LIMIT 1")
+            self.programs = [Program(**row) for row in cursor.fetchall()]
 
-            # Load rooms
-            cursor.execute("SELECT room_id, room_name, room_type, capacity, program_id FROM Rooms")
-            rooms_data = cursor.fetchall()
-            self.rooms = [Room(**row) for row in rooms_data]
+            # Load rooms (limit 3)
+            cursor.execute("SELECT room_id, room_name, room_type, capacity, program_id FROM Rooms LIMIT 3")
+            self.rooms = [Room(**row) for row in cursor.fetchall()]
 
-            # Load faculty
-            cursor.execute("SELECT faculty_id, faculty_name, employment_type, specialization, total_units, total_equivalent_units, total_hours, program_id FROM Faculty")
-            faculty_data = cursor.fetchall()
-            self.faculty = [Faculty(**row) for row in faculty_data]
+            # Load faculty (limit 5)
+            cursor.execute("SELECT faculty_id, faculty_name, employment_type, specialization, program_id FROM Faculty LIMIT 5")
+            self.faculty = [Faculty(**row) for row in cursor.fetchall()]
 
-            # Load courses
-            cursor.execute("SELECT course_id, course_code, descriptive_title, units, course_type, year_level, semester, program_id FROM Courses")
-            courses_data = cursor.fetchall()
-            all_courses = [Course(**row) for row in courses_data]
+            # Load courses (limit 5)
+            cursor.execute("SELECT course_id, course_code, descriptive_title, units, course_type, year_level, semester, program_id FROM Courses LIMIT 5")
+            all_courses = [Course(**row) for row in cursor.fetchall()]
             if semester:
                 sem_norm = semester.strip().lower()
                 self.courses = [c for c in all_courses if (c.semester or '').strip().lower() == sem_norm]
             else:
                 self.courses = all_courses
 
-            # Load sections
-            cursor.execute("SELECT section_id, section_name, program_id, year_level FROM Sections")
-            sections_data = cursor.fetchall()
-            self.sections = [Section(**row) for row in sections_data]
+            # Load sections (limit 2)
+            cursor.execute("SELECT section_id, section_name, program_id, year_level FROM Sections LIMIT 2")
+            self.sections = [Section(**row) for row in cursor.fetchall()]
 
             cursor.close()
 
@@ -185,7 +183,7 @@ class ReinforcementLearningScheduler:
             # Initialize RL environment
             self._initialize_rl_environment()
 
-            logging.info(f"Loaded: {len(self.rooms)} rooms, {len(self.faculty)} faculty, {len(self.courses)} courses, {len(self.sections)} sections")
+            logging.info(f"MINIMAL DATA LOADED: {len(self.rooms)} rooms, {len(self.faculty)} faculty, {len(self.courses)} courses, {len(self.sections)} sections")
             return True
 
         except Exception as e:
@@ -552,7 +550,7 @@ class ReinforcementLearningScheduler:
                 if course.course_code.upper() in spec and course.program_id == section.program_id and course.year_level == section.year_level:
                     self.faculty_spec_backlog[faculty.faculty_id] += 1
 
-        batch_size = 3
+        batch_size = 2  # Even smaller batches
         successful_assignments = 0
         
         logging.info(f"Processing {len(assignments)} assignments in batches of {batch_size}")
@@ -577,8 +575,8 @@ class ReinforcementLearningScheduler:
                         successful_assignments += 1
                         self.faculty_course_count[best_faculty.faculty_id] = self.faculty_course_count.get(best_faculty.faculty_id, 0) + 1
                         
-                        if len(self.assigned_pairs) > 50:
-                            self.assigned_pairs = set(list(self.assigned_pairs)[-50:])
+                        if len(self.assigned_pairs) > 20:  # Even smaller history
+                            self.assigned_pairs = set(list(self.assigned_pairs)[-20:])
 
         logging.info(f"Memory-optimized generation completed: {successful_assignments} successful assignments")
         
