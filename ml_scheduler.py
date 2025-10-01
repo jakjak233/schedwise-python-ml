@@ -75,33 +75,32 @@ class Program:
     program_name: str
 
 # Configuration constants
-DB_CONFIG_ENDPOINT = os.environ.get('SCHEDWISE_DB_CONFIG_URL', 'https://uipbsit3y.com/schedwise/schedwiseAPI/config/database_config.php')
-TIME_SLOT_START_HOUR = int(os.environ.get('SCHED_TIME_START_HOUR', 7))
-TIME_SLOT_START_MINUTE = int(os.environ.get('SCHED_TIME_START_MINUTE', 30))
-TIME_SLOT_END_HOUR = int(os.environ.get('SCHED_TIME_END_HOUR', 18))
-TIME_SLOT_DURATION_MINUTES = int(os.environ.get('SCHED_SLOT_MINUTES', 90))
-ONLINE_ROOM_FALLBACK_ID = int(os.environ.get('SCHED_ONLINE_ROOM_ID', -1))
-ONLINE_ROOM_FALLBACK_NAME = os.environ.get('SCHED_ONLINE_ROOM_NAME', 'Online')
-ONLINE_ROOM_FALLBACK_CAPACITY = int(os.environ.get('SCHED_ONLINE_ROOM_CAPACITY', 999))
-ROOM_CAPACITY_WEIGHT = float(os.environ.get('SCHED_ROOM_CAP_WEIGHT', '0.1'))
+TIME_SLOT_START_HOUR = 7
+TIME_SLOT_START_MINUTE = 30
+TIME_SLOT_END_HOUR = 18
+TIME_SLOT_DURATION_MINUTES = 90
+ONLINE_ROOM_FALLBACK_ID = -1
+ONLINE_ROOM_FALLBACK_NAME = 'Online'
+ONLINE_ROOM_FALLBACK_CAPACITY = 999
+ROOM_CAPACITY_WEIGHT = 0.1
 
 # Global lunch break window
-LUNCH_BREAK_START_HOUR = int(os.environ.get('SCHED_LUNCH_START_HOUR', 12))
-LUNCH_BREAK_START_MINUTE = int(os.environ.get('SCHED_LUNCH_START_MINUTE', 0))
-LUNCH_BREAK_END_HOUR = int(os.environ.get('SCHED_LUNCH_END_HOUR', 12))
-LUNCH_BREAK_END_MINUTE = int(os.environ.get('SCHED_LUNCH_END_MINUTE', 30))
+LUNCH_BREAK_START_HOUR = 12
+LUNCH_BREAK_START_MINUTE = 0
+LUNCH_BREAK_END_HOUR = 12
+LUNCH_BREAK_END_MINUTE = 30
 
 # Scoring and limits
-SCORE_PROGRAM_MATCH = int(os.environ.get('SCHED_SCORE_PROGRAM_MATCH', 80))
-SCORE_LOAD_BASE = int(os.environ.get('SCHED_SCORE_LOAD_BASE', 50))
-SCORE_LOAD_STEP = int(os.environ.get('SCHED_SCORE_LOAD_STEP', 5))
-SCORE_SLOTS_BASE = int(os.environ.get('SCHED_SCORE_SLOTS_BASE', 30))
-SCORE_SLOTS_STEP = int(os.environ.get('SCHED_SCORE_SLOTS_STEP', 2))
-ROOM_SCORE_PROGRAM_EXACT = int(os.environ.get('SCHED_ROOM_SCORE_PROGRAM_MATCH', 50))
-ROOM_SCORE_PROGRAM_GENERAL = int(os.environ.get('SCHED_ROOM_SCORE_GENERAL', 25))
-ROOM_SCORE_MINOR_LAB = int(os.environ.get('SCHED_ROOM_SCORE_MINOR_LAB', 30))
-MAX_COURSES_PERMANENT = int(os.environ.get('SCHED_MAX_COURSES_PERMANENT', 10))
-MAX_COURSES_NON_PERM = int(os.environ.get('SCHED_MAX_COURSES_NON_PERM', 5))
+SCORE_PROGRAM_MATCH = 80
+SCORE_LOAD_BASE = 50
+SCORE_LOAD_STEP = 5
+SCORE_SLOTS_BASE = 30
+SCORE_SLOTS_STEP = 2
+ROOM_SCORE_PROGRAM_EXACT = 50
+ROOM_SCORE_PROGRAM_GENERAL = 25
+ROOM_SCORE_MINOR_LAB = 30
+MAX_COURSES_PERMANENT = 10
+MAX_COURSES_NON_PERM = 5
 
 
 class ReinforcementLearningScheduler:
@@ -144,28 +143,21 @@ class ReinforcementLearningScheduler:
         """Clear memory periodically"""
         gc.collect()
 
-def get_database_config(self):
-    """Hardcoded database configuration for testing"""
-    return {
-        'host': '23.111.150.178',
-        'user': 'uipbsit3_jimvoy',
-        'password': 'x3mpassword', 
-        'database': 'uipbsit3_schedwise'
-    }
-        except Exception as e:
-            logging.warning(f"Could not fetch database config from PHP: {e}")
-        
+    def get_database_config(self):
+        """Hardcoded database configuration for testing"""
         return {
-            'host': 'localhost',
-            'user': 'root',
-            'password': '',
-            'database': 'schedwise'
+            'host': '23.111.150.178',
+            'user': 'uipbsit3_jimvoy',
+            'password': 'x3mpassword', 
+            'database': 'uipbsit3_schedwise'
         }
 
     def connect_database(self):
         """Connect to MySQL database with error handling"""
         try:
             config = self.get_database_config()
+            logging.info(f"Using database config: {config}")
+            
             self.connection = mysql.connector.connect(
                 host=config['host'],
                 user=config['user'],
