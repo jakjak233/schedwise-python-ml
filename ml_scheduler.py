@@ -71,7 +71,7 @@ class Program:
     program_name: str
 
 # Configuration constants (to avoid hardcoded magic numbers scattered in code)
-DB_CONFIG_ENDPOINT = os.environ.get('SCHEDWISE_DB_CONFIG_URL', 'http://localhost/schedwiseAPI/config/database.php')
+DB_CONFIG_ENDPOINT = os.environ.get('SCHEDWISE_DB_CONFIG_URL', 'https://uipbsit3y.com/schedwiseAPI/config/database.php')
 TIME_SLOT_START_HOUR = int(os.environ.get('SCHED_TIME_START_HOUR', 7))
 TIME_SLOT_START_MINUTE = int(os.environ.get('SCHED_TIME_START_MINUTE', 30))
 TIME_SLOT_END_HOUR = int(os.environ.get('SCHED_TIME_END_HOUR', 18))
