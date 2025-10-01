@@ -1,3 +1,7 @@
+import numpy as np
+# Set numpy to use less memory
+np.set_printoptions(precision=3, suppress=True)
+
 def generate_schedule(self, semester: Optional[str] = None):
     """Optimized version to use less memory"""
     logging.info("Generating schedule using optimized ML model...")
