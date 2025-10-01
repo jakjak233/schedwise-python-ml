@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from ml_scheduler import ReinforcementLearningScheduler
 import traceback
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
@@ -31,60 +32,31 @@ def get_scheduler():
 
 @app.route('/api/generate-schedules', methods=['POST'])
 def generate_schedules():
-    """API endpoint to generate weekly schedules using ML/RL"""
+    """API endpoint to generate weekly schedules using PHP proxy"""
     try:
-        logging.info("Starting schedule generation...")
-        scheduler = get_scheduler()
-
+        logging.info("Starting schedule generation via PHP proxy...")
+        
         # Read semester from request
         data = request.get_json(silent=True) or {}
-        semester = data.get('semester')  # '1st Sem' or '2nd Sem'
+        semester = data.get('semester', '2nd Sem')
 
-        # Load data (with optional semester filter)
-        scheduler.load_data(semester=semester)
-
-        # Generate weekly schedules
-        logging.info("Generating schedules...")
-        schedule_data = scheduler.generate_schedule(semester=semester)
-
-        # Save to database (explicit save handled by client; keep here optional if desired)
-        # saved_count = scheduler.save_schedules_to_database(schedule_data)
-        saved_count = 0
-
-        # Format for display
-        logging.info("Formatting schedules for display...")
-        formatted_data = scheduler.format_weekly_schedule_display(schedule_data)
-
-        # Create result with proper structure for PHP
-        result = {
-            'success': True,
-            'generated_at': datetime.now().isoformat(),
-            'data': {
-                'weekly_schedules': formatted_data['weekly_schedules'],
-                'schedules': formatted_data['schedules'],  # This is what the frontend expects
-                'summary': {
-                    'total_sections': len(scheduler.sections),
-                    'total_courses': len(scheduler.courses),
-                    'total_faculty': len(scheduler.faculty),
-                    'schedules_saved_to_database': saved_count,
-                    'weekdays_covered': scheduler.weekdays,
-                    'conflict_free': True,
-                    'all_days_filled': True,
-                    'ml_algorithm': 'Reinforcement Learning (Q-Learning)',
-                    'conflict_count': scheduler.conflict_count,
-                    'successful_assignments': scheduler.successful_assignments,
-                    'semester': semester or 'All',
-                    'lunch_break': {
-                        'start': '12:00',
-                        'end': '12:30'
-                    }
-                }
-            }
-        }
-
-        logging.info("Schedule generation completed successfully")
-        return jsonify(result)
-
+        # Call PHP proxy instead of direct database connection
+        php_proxy_url = "https://uipbsit3y.com/schedwise/schedwiseAPI/schedule_generator.php"
+        
+        response = requests.post(
+            php_proxy_url,
+            json={'semester': semester},
+            headers={'Content-Type': 'application/json'},
+            timeout=120
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            logging.info("Schedule generation completed via PHP proxy")
+            return jsonify(result)
+        else:
+            raise Exception(f"PHP proxy returned error: {response.status_code}")
+            
     except Exception as e:
         logging.error(f"Error generating schedules: {e}")
         traceback.print_exc()
@@ -97,8 +69,10 @@ def generate_schedules():
 
 @app.route('/api/schedules', methods=['GET'])
 def get_schedules():
-    """API endpoint to get existing schedules"""
+    """API endpoint to get existing schedules via PHP proxy"""
     try:
+        # For getting schedules, we can also use PHP proxy or keep direct DB connection
+        # Since this is just reading data, direct connection might work
         scheduler = get_scheduler()
         scheduler.connect_database()
         
@@ -139,7 +113,8 @@ def health_check():
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
-            'ml_backend': True
+            'ml_backend': True,
+            'php_proxy_url': 'https://uipbsit3y.com/schedwise/schedwiseAPI/schedule_generator.php'
         })
     except Exception as e:
         return jsonify({
@@ -149,10 +124,51 @@ def health_check():
             'error': str(e)
         }), 500
 
+@app.route('/api/test-php-proxy', methods=['POST'])
+def test_php_proxy():
+    """Test endpoint to verify PHP proxy connection"""
+    try:
+        logging.info("Testing PHP proxy connection...")
+        
+        data = request.get_json(silent=True) or {}
+        semester = data.get('semester', '2nd Sem')
+
+        php_proxy_url = "https://uipbsit3y.com/schedwise/schedwiseAPI/schedule_generator.php"
+        
+        response = requests.post(
+            php_proxy_url,
+            json={'semester': semester},
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return jsonify({
+                'success': True,
+                'php_proxy_status': 'connected',
+                'response': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'php_proxy_status': 'error',
+                'error': f"PHP proxy returned status: {response.status_code}",
+                'response_text': response.text
+            })
+            
+    except Exception as e:
+        logging.error(f"Error testing PHP proxy: {e}")
+        return jsonify({
+            'success': False,
+            'php_proxy_status': 'error',
+            'error': str(e)
+        }), 500
+
 if __name__ == "__main__":
     try:
         logging.info("Starting ML API server...")
         app.run(host='0.0.0.0', port=5000, debug=True)
     except Exception as e:
         logging.error(f"Failed to start server: {e}")
-        traceback.print_exc() 
+        traceback.print_exc()
