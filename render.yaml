@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: schedwise-python-ml
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api_server:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
