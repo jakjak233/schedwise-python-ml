@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import mysql.connector
 import json
 import logging
@@ -8,8 +7,6 @@ from datetime import time, datetime
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple
 from collections import defaultdict
-import requests
-import os
 import gc
 
 # Configure for memory efficiency
@@ -73,35 +70,6 @@ class Program:
     program_id: int
     program_code: str
     program_name: str
-
-# Configuration constants
-TIME_SLOT_START_HOUR = 7
-TIME_SLOT_START_MINUTE = 30
-TIME_SLOT_END_HOUR = 18
-TIME_SLOT_DURATION_MINUTES = 90
-ONLINE_ROOM_FALLBACK_ID = -1
-ONLINE_ROOM_FALLBACK_NAME = 'Online'
-ONLINE_ROOM_FALLBACK_CAPACITY = 999
-ROOM_CAPACITY_WEIGHT = 0.1
-
-# Global lunch break window
-LUNCH_BREAK_START_HOUR = 12
-LUNCH_BREAK_START_MINUTE = 0
-LUNCH_BREAK_END_HOUR = 12
-LUNCH_BREAK_END_MINUTE = 30
-
-# Scoring and limits
-SCORE_PROGRAM_MATCH = 80
-SCORE_LOAD_BASE = 50
-SCORE_LOAD_STEP = 5
-SCORE_SLOTS_BASE = 30
-SCORE_SLOTS_STEP = 2
-ROOM_SCORE_PROGRAM_EXACT = 50
-ROOM_SCORE_PROGRAM_GENERAL = 25
-ROOM_SCORE_MINOR_LAB = 30
-MAX_COURSES_PERMANENT = 10
-MAX_COURSES_NON_PERM = 5
-
 
 class ReinforcementLearningScheduler:
     """
@@ -228,17 +196,17 @@ class ReinforcementLearningScheduler:
         """Generate 1.5-hour time slots"""
         self.time_slots = []
         
-        start_hour = TIME_SLOT_START_HOUR
-        start_minute = TIME_SLOT_START_MINUTE
+        start_hour = 7
+        start_minute = 30
         
         current_hour = start_hour
         current_minute = start_minute
         
-        while current_hour < TIME_SLOT_END_HOUR:
+        while current_hour < 18:
             start_time = time(current_hour, current_minute)
             
             end_hour = current_hour
-            end_minute = current_minute + TIME_SLOT_DURATION_MINUTES
+            end_minute = current_minute + 90
             
             while end_minute >= 60:
                 end_hour += 1
@@ -246,17 +214,17 @@ class ReinforcementLearningScheduler:
             
             end_time = time(end_hour, end_minute)
             
-            if end_hour >= TIME_SLOT_END_HOUR:
+            if end_hour >= 18:
                 break
             
             # Skip slots that overlap lunch break
-            lunch_start = time(LUNCH_BREAK_START_HOUR, LUNCH_BREAK_START_MINUTE)
-            lunch_end = time(LUNCH_BREAK_END_HOUR, LUNCH_BREAK_END_MINUTE)
+            lunch_start = time(12, 0)
+            lunch_end = time(12, 30)
             overlaps_lunch = not (end_time <= lunch_start or lunch_end <= start_time)
             if not overlaps_lunch:
                 self.time_slots.append(TimeSlot(start_time, end_time))
             
-            current_minute += TIME_SLOT_DURATION_MINUTES
+            current_minute += 90
             while current_minute >= 60:
                 current_hour += 1
                 current_minute -= 60
@@ -321,10 +289,10 @@ class ReinforcementLearningScheduler:
         """Return maximum number of courses based on employment type"""
         emp = (faculty.employment_type or '').strip().lower()
         if emp in ['permanent', 'full-time', 'full time']:
-            return MAX_COURSES_PERMANENT
+            return 10
         if emp in ['affiliate', 'affilate', 'part-time', 'part time']:
-            return MAX_COURSES_NON_PERM
-        return MAX_COURSES_NON_PERM
+            return 5
+        return 5
 
     def _has_faculty_capacity(self, faculty):
         limit = self._get_faculty_course_limit(faculty)
@@ -359,10 +327,10 @@ class ReinforcementLearningScheduler:
         def score(faculty: Faculty) -> int:
             s = 0
             if faculty.program_id == section.program_id:
-                s += SCORE_PROGRAM_MATCH
-            s += max(0, SCORE_LOAD_BASE - SCORE_LOAD_STEP * self.faculty_course_count.get(faculty.faculty_id, 0))
+                s += 80
+            s += max(0, 50 - 5 * self.faculty_course_count.get(faculty.faculty_id, 0))
             slots_total = sum(len(slots) for slots in self.faculty_schedules[faculty.faculty_id].values())
-            s += max(0, SCORE_SLOTS_BASE - SCORE_SLOTS_STEP * slots_total)
+            s += max(0, 30 - 2 * slots_total)
             return s
 
         def sort_bucket(bucket: list[Faculty]) -> list[Faculty]:
@@ -398,36 +366,6 @@ class ReinforcementLearningScheduler:
                     return f
             return None
 
-    def _find_best_room_rl(self, program_id, course_type):
-        """Find best room using simple scoring"""
-        best_room = None
-        best_score = float('-inf')
-        
-        for room in self.rooms:
-            if room.room_type.lower() in ['online', 'field', 'tba']:
-                continue
-            
-            if room.program_id is not None and room.program_id != program_id:
-                continue
-            
-            score = 0
-            
-            if room.program_id == program_id:
-                score += ROOM_SCORE_PROGRAM_EXACT
-            elif room.program_id is None:
-                score += ROOM_SCORE_PROGRAM_GENERAL
-            
-            if course_type.lower() == 'minor' and room.room_type.lower() == 'laboratory':
-                score += ROOM_SCORE_MINOR_LAB
-            
-            score += room.capacity * ROOM_CAPACITY_WEIGHT
-            
-            if score > best_score:
-                best_score = score
-                best_room = room
-        
-        return best_room
-
     def _get_available_rooms_for_program(self, program_id, course_type):
         """Return rooms for the given program"""
         program_rooms = []
@@ -461,8 +399,7 @@ class ReinforcementLearningScheduler:
             
         online_room = next((r for r in self.rooms if r.room_type.lower() == 'online'), None)
         if not online_room:
-            online_room = Room(room_id=ONLINE_ROOM_FALLBACK_ID, room_name=ONLINE_ROOM_FALLBACK_NAME, room_type='Online', 
-                             capacity=ONLINE_ROOM_FALLBACK_CAPACITY, program_id=section.program_id)
+            online_room = Room(room_id=-1, room_name='Online', room_type='Online', capacity=999, program_id=section.program_id)
         
         f2f_success = False
         f2f_day_assigned = None
@@ -481,8 +418,7 @@ class ReinforcementLearningScheduler:
                 break
         
         forbidden_days = set([f2f_day_assigned]) if f2f_day_assigned else set()
-        online_success, _ = self._assign_session_rl(course, section, faculty, online_room, 
-                                               'Online', weekly_schedules, schedules_list, forbidden_days=forbidden_days)
+        online_success, _ = self._assign_session_rl(course, section, faculty, online_room, 'Online', weekly_schedules, schedules_list, forbidden_days=forbidden_days)
         
         if f2f_success and online_success:
             self.faculty_course_count[faculty.faculty_id] = self.faculty_course_count.get(faculty.faculty_id, 0) + 1
@@ -586,8 +522,7 @@ class ReinforcementLearningScheduler:
         assignments = []
         for section in self.sections:
             for course in self.courses:
-                if (course.program_id == section.program_id and 
-                    course.year_level == section.year_level):
+                if (course.program_id == section.program_id and course.year_level == section.year_level):
                     assignments.append((section, course))
         
         assignments.sort(key=lambda x: (
@@ -636,14 +571,11 @@ class ReinforcementLearningScheduler:
                 best_faculty = self._find_best_faculty_rl(course, section)
                 
                 if best_faculty and self._has_faculty_capacity(best_faculty):
-                    success = self._assign_course_sessions_rl(
-                        course, section, best_faculty, None, weekly_schedules, schedules_list
-                    )
+                    success = self._assign_course_sessions_rl(course, section, best_faculty, None, weekly_schedules, schedules_list)
                     
                     if success:
                         successful_assignments += 1
-                        self.faculty_course_count[best_faculty.faculty_id] = \
-                            self.faculty_course_count.get(best_faculty.faculty_id, 0) + 1
+                        self.faculty_course_count[best_faculty.faculty_id] = self.faculty_course_count.get(best_faculty.faculty_id, 0) + 1
                         
                         if len(self.assigned_pairs) > 50:
                             self.assigned_pairs = set(list(self.assigned_pairs)[-50:])
