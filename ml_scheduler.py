@@ -144,7 +144,7 @@ class ReinforcementLearningScheduler:
         """Clear memory periodically"""
         gc.collect()
 
-    def get_database_config(self):
+def get_database_config(self):
     """Hardcoded database configuration for testing"""
     return {
         'host': '23.111.150.178',
